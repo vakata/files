@@ -68,7 +68,7 @@ class FileDatabaseStorage extends FileStorage
         return [
             'id'       => $data['id'],
             'name'     => $data['name'],
-            'path'     => $data['location'],
+            'path'     => $this->baseDirectory . $data['location'],
             'complete' => true,
             'hash'     => $data['hash'],
             'size'     => $data['bytesize']
