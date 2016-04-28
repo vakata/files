@@ -19,7 +19,12 @@ $ composer require vakata/files
 ## Usage
 
 ``` php
-
+// create an instance
+$files = new \vakata\files\FileStorage('/path/to/dir');
+$file = $files->fromFile('/path/to/existing/file'); // stores the file
+$files->get($file['id']); // retrieves the file meta data
+$file = $files->fromString('save this string', 'into.file.name');
+$files->get($file['id']); // retrieves the file meta data
 ```
 
 Read more in the [API docs](docs/README.md)
