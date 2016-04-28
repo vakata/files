@@ -1,0 +1,10 @@
+<?php
+return (object)[
+    'rootNamespace' => 'vakata\files',
+    'destDirectory' => 'docs',
+    'format' => 'github',
+    'classes' => [
+        '\\vakata\\files\\FileStorage',
+        '\\vakata\\files\\FileDatabaseStorage'
+    ],
+];
