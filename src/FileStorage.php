@@ -17,7 +17,8 @@ class FileStorage
      * @method __construct
      * @param  string      $baseDirectory the base directory to store files in
      */
-    public function __construct($baseDirectory) {
+    public function __construct($baseDirectory)
+    {
         $this->baseDirectory = rtrim($baseDirectory, '/') . '/';
         $this->prefix = date('Y/m/d/');
     }
@@ -74,7 +75,7 @@ class FileStorage
     public function fromFile($path, $name = null)
     {
         if (!is_file($path)) {
-            throw new Exception('Not a valid file', 400);
+            throw new FileException('Not a valid file', 400);
         }
         $name = $name === null ? basename($path) : $name;
         return $this->fromStream(fopen($path, 'r'), $name);
@@ -102,7 +103,7 @@ class FileStorage
     public function fromRequest(RequestInterface $request, $key = 'file', $name = null)
     {
         if (!$request->hasUpload($key)) {
-            throw new Exception('No valid input files', 400);
+            throw new FileException('No valid input files', 400);
         }
         $upload = $request->getUpload('file');
         $name   = $name ?: ($upload->getName() !== 'blob' ? $upload->getName() : $request->getPost("name", "blob"));
@@ -118,14 +119,14 @@ class FileStorage
             isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         ]));
         if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
-            throw new Exception('The same file is already being uploaded', 400);
+            throw new FileException('The same file is already being uploaded', 400);
         }
         if ($chunk > 0 && !is_file($this->baseDirectory . $temp)) {
-            throw new Exception('No previous file parts', 400);
+            throw new FileException('No previous file parts', 400);
         }
 
         if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
-            throw new Exception('Could not create upload directory');
+            throw new FileException('Could not create upload directory');
         }
         if ($chunk === 0) {
             $upload->saveAs($this->baseDirectory . $temp);
@@ -158,7 +159,7 @@ class FileStorage
     public function get($id)
     {
         if (!is_file($this->baseDirectory . $id)) {
-            throw new Exception('File not found', 404);
+            throw new FileNotFoundException('File not found', 404);
         }
         return [
             'id'       => $id,
