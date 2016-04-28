@@ -3,6 +3,7 @@
 namespace vakata\files;
 
 use vakata\http\RequestInterface;
+use vakata\http\UploadInterface;
 
 /**
  * A file storage class usedd to move desired files to a location on disk.
@@ -34,7 +35,11 @@ class FileStorage
         $cnt = 0;
         do {
             $newName = sprintf('%04d', $cnt++) . '.' . urlencode($name) . '_up';
-        } while (file_exists($this->baseDirectory . $this->prefix . $name));
+        } while (file_exists($this->baseDirectory . $this->prefix . $newName));
+
+        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
+            throw new FileException('Could not create upload directory');
+        }
 
         $path = fopen($this->baseDirectory . $this->prefix . $newName, 'w');
         while (!feof($handle)) {
@@ -105,12 +110,12 @@ class FileStorage
         if (!$request->hasUpload($key)) {
             throw new FileException('No valid input files', 400);
         }
-        $upload = $request->getUpload('file');
+        $upload = $request->getUpload($key);
         $name   = $name ?: ($upload->getName() !== 'blob' ? $upload->getName() : $request->getPost("name", "blob"));
         $size   = $request->getPost("size", 0);
         $chunk  = $request->getPost('chunk', 0, 'int');
         $chunks = $request->getPost('chunks', 0, 'int');
-        $done   = $chunk === $chunks;
+        $done   = $chunk === $chunks - 1;
         $temp   = $this->prefix . md5(implode('.', [
             $name,
             $chunks,
@@ -163,7 +168,7 @@ class FileStorage
         }
         return [
             'id'       => $id,
-            'name'     => substr(basename($id), 5, -2),
+            'name'     => substr(basename($id), 5, -3),
             'path'     => $this->baseDirectory . $id,
             'complete' => true,
             'hash'     => md5_file($this->baseDirectory . $id),

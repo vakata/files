@@ -60,7 +60,10 @@ class FileDatabaseStorage extends FileStorage
     {
         $data = $this->db->one("SELECT * FROM {$this->table} WHERE id = ?", $id);
         if (!$data) {
-            throw new Exception('File not found', 404);
+            throw new FileNotFoundException('File not found', 404);
+        }
+        if (!is_file($this->baseDirectory . $data['location'])) {
+            throw new FileNotFoundException('File not found', 404);
         }
         return [
             'id'       => $data['id'],
