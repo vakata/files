@@ -28,7 +28,8 @@ class FileStorage
      * @param  string     $name   the name to use for the stream
      * @return array              an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromStream($handle, $name) {
+    public function fromStream($handle, $name)
+    {
         $cnt = 0;
         do {
             $newName = sprintf('%04d', $cnt++) . '.' . urlencode($name) . '_up';
@@ -56,7 +57,8 @@ class FileStorage
      * @param  string     $name    the name to store the string under
      * @return array               an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromString($content, $name) {
+    public function fromString($content, $name)
+    {
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, $content);
         rewind($handle);
@@ -141,9 +143,9 @@ class FileStorage
             'id'       => $temp,
             'name'     => $name,
             'path'     => $this->baseDirectory . $temp,
-            'complete' => $done,
-            'hash'     => $done ? md5_file($this->baseDirectory . $temp) : '',
-            'size'     => $done ? filesize($this->baseDirectory . $temp) : 0
+            'complete' => false,
+            'hash'     => '',
+            'size'     => 0
         ];
     }
 
@@ -160,7 +162,7 @@ class FileStorage
         }
         return [
             'id'       => $id,
-            'name'     => $name,
+            'name'     => substr(basename($id), 5, -2),
             'path'     => $this->baseDirectory . $id,
             'complete' => true,
             'hash'     => md5_file($this->baseDirectory . $id),

@@ -20,7 +20,8 @@ class FileDatabaseStorage extends FileStorage
      * @param  DatabaseInterface $db            a database connection instance to use for storage
      * @param  string            $table         optional table name to store to, defaults to `"uploads"`
      */
-    public function __construct($baseDirectory, DatabaseInterface $db, $table = 'uploads') {
+    public function __construct($baseDirectory, DatabaseInterface $db, $table = 'uploads')
+    {
         parent::__construct($baseDirectory);
         $this->db = $db;
         $this->table = $table;
