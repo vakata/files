@@ -6,7 +6,7 @@
 [![Code Climate][ico-cc]][link-cc]
 [![Tests Coverage][ico-cc-coverage]][link-cc]
 
-A simple key-value storage class. used for configurations and extended in vakata/session.
+File storage classes.
 
 ## Install
 
