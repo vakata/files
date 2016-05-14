@@ -24,13 +24,30 @@ class FileStorage
         $this->prefix = date('Y/m/d/');
     }
     /**
+     * Save additional settings for a file.
+     * @method saveSettings
+     * @param  id|string|array $file     file id or array
+     * @param  mixed           $settings data to store for the file
+     * @return array                     the file array (as from getFile)
+     */
+    public function saveSettings($file, $settings)
+    {
+        if (!is_array($file)) {
+            $file = $this->get($file);
+        }
+        file_put_contents($file['path'] . '.settings', json_encode($settings));
+        $file['settings'] = $settings;
+        return $file;
+    }
+    /**
      * Store a stream.
      * @method fromStream
-     * @param  stream     $handle the stream to read and store
-     * @param  string     $name   the name to use for the stream
-     * @return array              an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  stream     $handle   the stream to read and store
+     * @param  string     $name     the name to use for the stream
+     * @param  mixed      $settings optional data to save along with the file
+     * @return array                an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromStream($handle, $name)
+    public function fromStream($handle, $name, $settings = null)
     {
         $cnt = 0;
         do {
@@ -47,65 +64,76 @@ class FileStorage
         }
         fclose($path);
 
-        return [
+        $file = [
             'id'       => $this->prefix . $newName,
             'name'     => $name,
             'path'     => $this->baseDirectory . $this->prefix . $newName,
             'complete' => true,
             'hash'     => md5_file($this->baseDirectory . $this->prefix . $newName),
-            'size'     => filesize($this->baseDirectory . $this->prefix . $newName)
+            'size'     => filesize($this->baseDirectory . $this->prefix . $newName),
+            'settings' => $settings
         ];
+
+        if (isset($settings)) {
+            $this->saveSettings($file, $settings);
+        }
+
+        return $file;
     }
     /**
      * Store a string in the file storage.
      * @method fromString
-     * @param  string     $content the string to store
-     * @param  string     $name    the name to store the string under
-     * @return array               an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  string     $content  the string to store
+     * @param  string     $name     the name to store the string under
+     * @param  mixed      $settings optional data to save along with the file
+     * @return array                an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromString($content, $name)
+    public function fromString($content, $name, $settings = null)
     {
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, $content);
         rewind($handle);
-        return $this->fromStream($handle, $name);
+        return $this->fromStream($handle, $name, $settings);
     }
     /**
      * Copy an existing file to the storage
      * @method fromFile
      * @param  string   $path the path to the file
      * @param  string   $name the optional name to store the string under (defaults to the current file name)
-     * @return array          an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  mixed    $settings optional data to save along with the file
+     * @return array              an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromFile($path, $name = null)
+    public function fromFile($path, $name = null, $settings = null)
     {
         if (!is_file($path)) {
             throw new FileException('Not a valid file', 400);
         }
         $name = $name === null ? basename($path) : $name;
-        return $this->fromStream(fopen($path, 'r'), $name);
+        return $this->fromStream(fopen($path, 'r'), $name, $settings);
     }
     /**
      * Store an Upload instance.
      * @method fromUpload
-     * @param  UploadInterface $upload the instance to store
-     * @param  string|null     $name   an optional name to store under (defaults to the Upload name)
-     * @return array                   an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  UploadInterface $upload   the instance to store
+     * @param  string|null     $name     an optional name to store under (defaults to the Upload name)
+     * @param  mixed           $settings optional data to save along with the file
+     * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromUpload(UploadInterface $upload, $name = null)
+    public function fromUpload(UploadInterface $upload, $name = null, $settings = null)
     {
         $name = $name === null ? $upload->getName() : $name;
-        return $this->fromStream($upload->getBody(), $name);
+        return $this->fromStream($upload->getBody(), $name, $settings);
     }
     /**
      * Store an upload from a Request object (supports chunked upload)
      * @method fromRequest
      * @param  RequestInterface $request the request to process
-     * @param  string           $key     optional upload key, defaults to `"file"`
-     * @param  string|null      $name    an optional name to store under (defaults to the upload name or the post field)
+     * @param  string           $key      optional upload key, defaults to `"file"`
+     * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
+     * @param  mixed            $settings optional data to save along with the file
      * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromRequest(RequestInterface $request, $key = 'file', $name = null)
+    public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null)
     {
         if (!$request->hasUpload($key)) {
             throw new FileException('No valid input files', 400);
@@ -140,7 +168,7 @@ class FileStorage
         }
 
         if ($done) {
-            $data = $this->fromFile($this->baseDirectory . $temp, $name);
+            $data = $this->fromFile($this->baseDirectory . $temp, $name, $settings);
             unlink($this->baseDirectory . $temp);
             return $data;
         }
@@ -172,7 +200,10 @@ class FileStorage
             'path'     => $this->baseDirectory . $id,
             'complete' => true,
             'hash'     => md5_file($this->baseDirectory . $id),
-            'size'     => filesize($this->baseDirectory . $id)
+            'size'     => filesize($this->baseDirectory . $id),
+            'settings' => is_file($this->baseDirectory . $id) ?
+                json_decode($this->baseDirectory . $id . '.settings', true) :
+                null
         ];
     }
 }

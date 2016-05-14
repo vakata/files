@@ -27,24 +27,46 @@ class FileDatabaseStorage extends FileStorage
         $this->table = $table;
     }
     /**
+     * Save additional settings for a file.
+     * @method saveSettings
+     * @param  id|string|array $file     file id or array
+     * @param  mixed           $settings data to store for the file
+     * @return array                     the file array (as from getFile)
+     */
+    public function saveSettings($file, $settings)
+    {
+        if (!is_array($file)) {
+            $file = $this->get($file);
+        }
+        $dbc->query(
+            "UPDATE uploads SET settings = ? WHERE id = ?",
+            [ json_encode($settings), $file['id'] ]
+        );
+        $file['settings'] = $settings;
+        return $file;
+    }
+    /**
      * Store a stream.
      * @method fromStream
-     * @param  stream     $handle the stream to read and store
-     * @param  string     $name   the name to use for the stream
+     * @param  stream     $handle   the stream to read and store
+     * @param  string     $name     the name to use for the stream
+     * @param  mixed      $settings optional data to save along with the file
      * @return array              an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromStream($handle, $name = null)
+    public function fromStream($handle, $name, $settings = null)
     {
         $data = parent::fromStream($handle, $name);
         if ($data['complete']) {
             $data['id'] = $this->db->query(
-                "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash, settings)
+                 VALUES (?, ?, ?, ?, ?, ?)",
                 [
                     $data['name'],
                     $data['id'],
                     $data['size'],
                     date('Y-m-d H:i:s'),
-                    $data['hash']
+                    $data['hash'],
+                    json_encode($settings)
                 ]
             )->insertId();
         }
@@ -71,7 +93,8 @@ class FileDatabaseStorage extends FileStorage
             'path'     => $this->baseDirectory . $data['location'],
             'complete' => true,
             'hash'     => $data['hash'],
-            'size'     => $data['bytesize']
+            'size'     => $data['bytesize'],
+            'settings' => json_decode($data['settings'], true)
         ];
     }
 }
