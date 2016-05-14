@@ -143,7 +143,7 @@ class FileStorage
         $size   = $request->getPost("size", 0);
         $chunk  = $request->getPost('chunk', 0, 'int');
         $chunks = $request->getPost('chunks', 0, 'int');
-        $done   = $chunks <= 1 || $chunk === $chunks - 1;
+        $done   = $chunks <= 1 || $chunk >= $chunks - 1;
         $temp   = $this->prefix . md5(implode('.', [
             $name,
             $chunks,
