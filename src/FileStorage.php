@@ -8,7 +8,7 @@ use vakata\http\UploadInterface;
 /**
  * A file storage class usedd to move desired files to a location on disk.
  */
-class FileStorage
+class FileStorage implements FileStorageInterface
 {
     protected $prefix;
     protected $baseDirectory;
