@@ -15,7 +15,6 @@ class FileDatabaseStorage extends FileStorage
 
     /**
      * Create an instance
-     * @method __construct
      * @param  string            $baseDirectory the base directory to store files in
      * @param  DatabaseInterface $db            a database connection instance to use for storage
      * @param  string            $table         optional table name to store to, defaults to `"uploads"`
@@ -28,7 +27,6 @@ class FileDatabaseStorage extends FileStorage
     }
     /**
      * Save additional settings for a file.
-     * @method saveSettings
      * @param  id|string|array $file     file id or array
      * @param  mixed           $settings data to store for the file
      * @return array                     the file array (as from getFile)
@@ -47,7 +45,6 @@ class FileDatabaseStorage extends FileStorage
     }
     /**
      * Store a stream.
-     * @method fromStream
      * @param  stream     $handle   the stream to read and store
      * @param  string     $name     the name to use for the stream
      * @param  mixed      $settings optional data to save along with the file
@@ -74,7 +71,6 @@ class FileDatabaseStorage extends FileStorage
     }
     /**
      * Get a file's metadata from storage.
-     * @method get
      * @param  mixed $id  the file ID to return
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */

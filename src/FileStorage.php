@@ -15,7 +15,6 @@ class FileStorage implements FileStorageInterface
 
     /**
      * Create an instance.
-     * @method __construct
      * @param  string      $baseDirectory the base directory to store files in
      */
     public function __construct($baseDirectory)
@@ -25,7 +24,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Save additional settings for a file.
-     * @method saveSettings
      * @param  id|string|array $file     file id or array
      * @param  mixed           $settings data to store for the file
      * @return array                     the file array (as from getFile)
@@ -41,7 +39,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Store a stream.
-     * @method fromStream
      * @param  stream     $handle   the stream to read and store
      * @param  string     $name     the name to use for the stream
      * @param  mixed      $settings optional data to save along with the file
@@ -82,7 +79,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Store a string in the file storage.
-     * @method fromString
      * @param  string     $content  the string to store
      * @param  string     $name     the name to store the string under
      * @param  mixed      $settings optional data to save along with the file
@@ -97,7 +93,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Copy an existing file to the storage
-     * @method fromFile
      * @param  string   $path the path to the file
      * @param  string   $name the optional name to store the string under (defaults to the current file name)
      * @param  mixed    $settings optional data to save along with the file
@@ -113,7 +108,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Store an Upload instance.
-     * @method fromUpload
      * @param  UploadInterface $upload   the instance to store
      * @param  string|null     $name     an optional name to store under (defaults to the Upload name)
      * @param  mixed           $settings optional data to save along with the file
@@ -126,7 +120,6 @@ class FileStorage implements FileStorageInterface
     }
     /**
      * Store an upload from a Request object (supports chunked upload)
-     * @method fromRequest
      * @param  RequestInterface $request the request to process
      * @param  string           $key      optional upload key, defaults to `"file"`
      * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
@@ -185,7 +178,6 @@ class FileStorage implements FileStorageInterface
 
     /**
      * Get a file's metadata from storage.
-     * @method get
      * @param  mixed $id  the file ID to return
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */
