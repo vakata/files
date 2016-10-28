@@ -27,7 +27,7 @@ class FileDatabaseStorage extends FileStorage
     }
     /**
      * Save additional settings for a file.
-     * @param  id|string|array $file     file id or array
+     * @param  int|string|array $file     file id or array
      * @param  mixed           $settings data to store for the file
      * @return array                     the file array (as from getFile)
      */
@@ -45,7 +45,7 @@ class FileDatabaseStorage extends FileStorage
     }
     /**
      * Store a stream.
-     * @param  stream     $handle   the stream to read and store
+     * @param  resource   $handle   the stream to read and store
      * @param  string     $name     the name to use for the stream
      * @param  mixed      $settings optional data to save along with the file
      * @return array              an array consisting of the ID, name, path, hash and size of the copied file
