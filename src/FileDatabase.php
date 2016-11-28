@@ -19,6 +19,7 @@ class FileDatabase extends FileDatabaseStorage
     public function __construct($baseDirectory, DatabaseInterface $db, $table = 'uploads')
     {
         parent::__construct($baseDirectory, $db, $table);
+        $this->prefix = '';
     }
     /**
      * Store a stream.
@@ -36,7 +37,7 @@ class FileDatabase extends FileDatabaseStorage
                 $handle = fopen($data['path'], 'r');
                 // update
                 if ($this->db->driver() === 'oracle') {
-                    $tans = $this->db->begin();
+                    $trans = $this->db->begin();
                     $this->db->query(
                         "UPDATE {$this->table} SET data = EMPTY_BLOB() WHERE id = ? RETURNING data INTO ?",
                         [ $data['id'], $handle ]

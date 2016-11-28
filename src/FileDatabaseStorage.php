@@ -54,18 +54,22 @@ class FileDatabaseStorage extends FileStorage
     {
         $data = parent::fromStream($handle, $name);
         if ($data['complete']) {
-            $data['id'] = $this->db->query(
-                "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash, settings)
-                 VALUES (?, ?, ?, ?, ?, ?)",
-                [
-                    $data['name'],
-                    $data['id'],
-                    $data['size'],
-                    date('Y-m-d H:i:s'),
-                    $data['hash'],
-                    json_encode($settings)
-                ]
-            )->insertId();
+            $id = 0;
+            $sql = "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash, settings) VALUES (?, ?, ?, ?, ?, ?)";
+            $par = [
+                $data['name'],
+                $data['id'],
+                $data['size'],
+                date('Y-m-d H:i:s'),
+                $data['hash'],
+                json_encode($settings)
+            ];
+            if ($this->db->driver() === 'oracle') {
+                $sql .= " RETURNING id INTO ?";
+                $par[] = &$id;
+            }
+            $q = $this->db->query($sql, $par);
+            $data['id'] = $this->db->driver() === 'oracle' ? $id : $q->insertId();
         }
         return $data;
     }
