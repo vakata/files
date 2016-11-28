@@ -34,7 +34,7 @@ class FileDatabaseStorage extends FileStorage
     public function saveSettings($file, $settings)
     {
         if (!is_array($file)) {
-            $file = $this->get($file);
+            $file = $this->get($file, false);
         }
         $this->db->query(
             "UPDATE uploads SET settings = ? WHERE id = ?",
@@ -72,11 +72,15 @@ class FileDatabaseStorage extends FileStorage
     /**
      * Get a file's metadata from storage.
      * @param  mixed $id  the file ID to return
+     * @param  bool  $contents  should the result include the file path, defaults to false
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */
-    public function get($id)
+    public function get($id, $contents = false)
     {
-        $data = $this->db->one("SELECT * FROM {$this->table} WHERE id = ?", $id);
+        $data = $this->db->one(
+            "SELECT id, name, location, hash, bytesize, settings FROM {$this->table} WHERE id = ?",
+            $id
+        );
         if (!$data) {
             throw new FileNotFoundException('File not found', 404);
         }
@@ -86,7 +90,7 @@ class FileDatabaseStorage extends FileStorage
         return [
             'id'       => $data['id'],
             'name'     => $data['name'],
-            'path'     => $this->baseDirectory . $data['location'],
+            'path'     => $contents ? $this->baseDirectory . $data['location'] : null,
             'complete' => true,
             'hash'     => $data['hash'],
             'size'     => $data['bytesize'],

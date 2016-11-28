@@ -31,7 +31,7 @@ class FileStorage implements FileStorageInterface
     public function saveSettings($file, $settings)
     {
         if (!is_array($file)) {
-            $file = $this->get($file);
+            $file = $this->get($file, false);
         }
         file_put_contents($file['path'] . '.settings', json_encode($settings));
         $file['settings'] = $settings;
@@ -178,10 +178,11 @@ class FileStorage implements FileStorageInterface
 
     /**
      * Get a file's metadata from storage.
-     * @param  mixed $id  the file ID to return
+     * @param  mixed $id        the file ID to return
+     * @param  bool  $contents  should the result include the file path, defaults to false
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */
-    public function get($id)
+    public function get($id, $contents = false)
     {
         if (!is_file($this->baseDirectory . $id)) {
             throw new FileNotFoundException('File not found', 404);
@@ -189,7 +190,7 @@ class FileStorage implements FileStorageInterface
         return [
             'id'       => $id,
             'name'     => substr(basename($id), 5, -3),
-            'path'     => $this->baseDirectory . $id,
+            'path'     => $contents ? $this->baseDirectory . $id : null,
             'complete' => true,
             'hash'     => md5_file($this->baseDirectory . $id),
             'size'     => filesize($this->baseDirectory . $id),

@@ -13,5 +13,5 @@ interface FileStorageInterface
     public function fromFile($path, $name = null, $settings = null);
     public function fromUpload(UploadInterface $upload, $name = null, $settings = null);
     public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null);
-    public function get($id);
+    public function get($id, $contents = false);
 }
