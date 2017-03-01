@@ -37,7 +37,7 @@ class FileDatabaseStorage extends FileStorage
             $file = $this->get($file, false);
         }
         $this->db->query(
-            "UPDATE uploads SET settings = ? WHERE id = ?",
+            "UPDATE {$this->table} SET settings = ? WHERE id = ?",
             [ json_encode($settings), $file['id'] ]
         );
         $file['settings'] = $settings;
