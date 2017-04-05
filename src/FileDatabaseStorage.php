@@ -3,7 +3,7 @@
 namespace vakata\files;
 
 use vakata\http\RequestInterface;
-use vakata\database\DatabaseInterface;
+use vakata\database\DBInterface;
 
 /**
  * An extension to the FileStorage class, which persists any data to a database.
@@ -16,10 +16,10 @@ class FileDatabaseStorage extends FileStorage
     /**
      * Create an instance
      * @param  string            $baseDirectory the base directory to store files in
-     * @param  DatabaseInterface $db            a database connection instance to use for storage
+     * @param  DBInterface       $db            a database connection instance to use for storage
      * @param  string            $table         optional table name to store to, defaults to `"uploads"`
      */
-    public function __construct($baseDirectory, DatabaseInterface $db, $table = 'uploads')
+    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads')
     {
         parent::__construct($baseDirectory);
         $this->db = $db;
