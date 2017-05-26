@@ -4,6 +4,7 @@ namespace vakata\files;
 
 use vakata\http\RequestInterface;
 use vakata\http\UploadInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * A file storage class used to move desired files to a location on disk.
@@ -158,6 +159,70 @@ class FileStorage implements FileStorageInterface
             $upload->saveAs($this->baseDirectory . $temp);
         } else {
             $upload->appendTo($this->baseDirectory . $temp);
+        }
+
+        if ($done) {
+            $data = $this->fromFile($this->baseDirectory . $temp, $name, $settings);
+            unlink($this->baseDirectory . $temp);
+            return $data;
+        }
+
+        return [
+            'id'       => $temp,
+            'name'     => $name,
+            'path'     => $this->baseDirectory . $temp,
+            'complete' => false,
+            'hash'     => '',
+            'size'     => 0
+        ];
+    }
+
+    /**
+     * Store an upload from a PSR-7 compatible Request object (supports chunked upload)
+     * @param  RequestInterface $request the request to process
+     * @param  string           $key      optional upload key, defaults to `"file"`
+     * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
+     * @param  mixed            $settings optional data to save along with the file
+     * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
+     */
+    public function fromPSRRequest(ServerRequestInterface $request, $key = 'file', $name = null, $settings = null)
+    {
+        $files = $request->getUploadedFiles();
+        if (!isset($files[$key])) {
+            throw new FileException('No valid input files', 400);
+        }
+        $upload = $files[$key];
+        $name   = $name ?? ($upload->getClientFilename() !== 'blob' ? $upload->getClientFilename() : ($request->getParsedBody()["name"] ?? "blob"));
+        $size   = (int)($request->getParsedBody()["size"] ?? 0);
+        $chunk  = (int)($request->getParsedBody()['chunk'] ?? 0);
+        $chunks = (int)($request->getParsedBody()['chunks'] ?? 0);
+        $done   = $chunks <= 1 || $chunk >= $chunks - 1;
+        $temp   = $this->prefix . md5(implode('.', [
+            $name,
+            $chunks,
+            $size,
+            session_id(),
+            isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
+        ]));
+        if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
+            throw new FileException('The same file is already being uploaded', 400);
+        }
+        if ($chunk > 0 && !is_file($this->baseDirectory . $temp)) {
+            throw new FileException('No previous file parts', 400);
+        }
+
+        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
+            throw new FileException('Could not create upload directory');
+        }
+        if ($chunk === 0) {
+            $upload->moveTo($this->baseDirectory . $temp);
+        } else {
+            $upload->moveTo($this->baseDirectory . $temp . '_');
+            $inp = fopen($this->baseDirectory . $temp, 'r');
+            $out = fopen($this->baseDirectory . $temp, 'a');
+            stream_copy_to_stream($inp, $out);
+            fclose($out);
+            fclose($inp);
         }
 
         if ($done) {
