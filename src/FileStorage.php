@@ -218,7 +218,7 @@ class FileStorage implements FileStorageInterface
             $upload->moveTo($this->baseDirectory . $temp);
         } else {
             $upload->moveTo($this->baseDirectory . $temp . '_');
-            $inp = fopen($this->baseDirectory . $temp, 'r');
+            $inp = fopen($this->baseDirectory . $temp . '_', 'r');
             $out = fopen($this->baseDirectory . $temp, 'a');
             stream_copy_to_stream($inp, $out);
             fclose($out);
