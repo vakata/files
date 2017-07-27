@@ -223,6 +223,7 @@ class FileStorage implements FileStorageInterface
             stream_copy_to_stream($inp, $out);
             fclose($out);
             fclose($inp);
+            unlink($this->baseDirectory . $temp . '_');
         }
 
         if ($done) {
