@@ -64,12 +64,12 @@ class FileDatabaseStorage extends FileStorage
                 $data['hash'],
                 json_encode($settings)
             ];
-            if ($this->db->driver() === 'oracle') {
+            if ($this->db->driverName() === 'oracle') {
                 $sql .= " RETURNING id INTO ?";
                 $par[] = &$id;
             }
             $q = $this->db->query($sql, $par);
-            $data['id'] = $this->db->driver() === 'oracle' ? $id : $q->insertId();
+            $data['id'] = $this->db->driverName() === 'oracle' ? $id : $q->insertId();
         }
         return $data;
     }

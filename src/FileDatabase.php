@@ -36,7 +36,7 @@ class FileDatabase extends FileDatabaseStorage
             try {
                 $handle = fopen($data['path'], 'r');
                 // update
-                if ($this->db->driver() === 'oracle') {
+                if ($this->db->driverName() === 'oracle') {
                     $trans = $this->db->begin();
                     $this->db->query(
                         "UPDATE {$this->table} SET data = EMPTY_BLOB() WHERE id = ? RETURNING data INTO ?",
