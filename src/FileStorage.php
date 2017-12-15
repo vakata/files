@@ -48,8 +48,12 @@ class FileStorage implements FileStorageInterface
     public function fromStream($handle, $name, $settings = null)
     {
         $cnt = 0;
+        $uen = urlencode($name);
+        if (strlen($uen) > 245) { // keep total length under 255
+            $uen = preg_replace(['(%[a-f0-9]*$)i', '(%D0$)i'], '', substr($uen, 0, 245));
+        }
         do {
-            $newName = sprintf('%04d', $cnt++) . '.' . urlencode($name) . '_up';
+            $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
         } while (file_exists($this->baseDirectory . $this->prefix . $newName));
 
         if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
@@ -125,14 +129,16 @@ class FileStorage implements FileStorageInterface
      * @param  string           $key      optional upload key, defaults to `"file"`
      * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
      * @param  mixed            $settings optional data to save along with the file
-     * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  mixed            $user     optional user identifying code
+     * @return array                      an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null)
+    public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null, $user = null)
     {
         if (!$request->hasUpload($key)) {
             throw new FileException('No valid input files', 400);
         }
         $upload = $request->getUpload($key);
+        $user   = $user ?: session_id();
         $name   = $name ?: ($upload->getName() !== 'blob' ? $upload->getName() : $request->getPost("name", "blob"));
         $size   = $request->getPost("size", 0);
         $chunk  = $request->getPost('chunk', 0, 'int');
@@ -142,7 +148,7 @@ class FileStorage implements FileStorageInterface
             $name,
             $chunks,
             $size,
-            session_id(),
+            $user,
             isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         ]));
         if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
@@ -183,15 +189,17 @@ class FileStorage implements FileStorageInterface
      * @param  string           $key      optional upload key, defaults to `"file"`
      * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
      * @param  mixed            $settings optional data to save along with the file
-     * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
+     * @param  mixed            $user     optional user identifying code
+     * @return array                      an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromPSRRequest(ServerRequestInterface $request, $key = 'file', $name = null, $settings = null)
+    public function fromPSRRequest(ServerRequestInterface $request, $key = 'file', $name = null, $settings = null, $user = null)
     {
         $files = $request->getUploadedFiles();
         if (!isset($files[$key])) {
             throw new FileException('No valid input files', 400);
         }
         $upload = $files[$key];
+        $user   = $user ?: session_id();
         $name   = $name ?? ($upload->getClientFilename() !== 'blob' ? $upload->getClientFilename() : ($request->getParsedBody()["name"] ?? "blob"));
         $size   = (int)($request->getParsedBody()["size"] ?? 0);
         $chunk  = (int)($request->getParsedBody()['chunk'] ?? 0);
@@ -201,7 +209,7 @@ class FileStorage implements FileStorageInterface
             $name,
             $chunks,
             $size,
-            session_id(),
+            $user,
             isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         ]));
         if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
