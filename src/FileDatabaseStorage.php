@@ -12,6 +12,7 @@ class FileDatabaseStorage extends FileStorage
 {
     protected $db;
     protected $table;
+    protected $reuse;
 
     /**
      * Create an instance
@@ -19,11 +20,12 @@ class FileDatabaseStorage extends FileStorage
      * @param  DBInterface       $db            a database connection instance to use for storage
      * @param  string            $table         optional table name to store to, defaults to `"uploads"`
      */
-    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads')
+    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads', $reuse = false)
     {
         parent::__construct($baseDirectory);
         $this->db = $db;
         $this->table = $table;
+        $this->reuse = $reuse;
     }
     /**
      * Save additional settings for a file.
@@ -54,6 +56,17 @@ class FileDatabaseStorage extends FileStorage
     {
         $data = parent::fromStream($handle, $name);
         if ($data['complete']) {
+            if ($this->reuse && $data['hash'] && $data['size']) {
+                $existing = $this->db->one(
+                    "SELECT location FROM {$this->table} WHERE hash = ? AND bytesize = ?",
+                    [ $data['hash'], $data['size'] ]
+                );
+                if ($existing !== null && is_file($this->baseDirectory . $existing)) {
+                    unlink($data['path']);
+                    $data['id']   = $existing;
+                    $data['path'] = $this->baseDirectory . $existing;
+                }
+            }
             $id = 0;
             $sql = "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash, settings) VALUES (?, ?, ?, ?, ?, ?)";
             $par = [
