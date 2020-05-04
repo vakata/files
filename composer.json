@@ -16,12 +16,7 @@
         }
     ],
     "require": {
-        "php" : ">=5.4.0"
-    },
-    "require-dev": {
-        "phpunit/phpunit" : "4.*",
-        "codeclimate/php-test-reporter": "dev-master",
-        "clean/phpdoc-md": "dev-master"
+        "php" : ">=7.2.0"
     },
     "autoload": {
         "psr-4": {
@@ -32,15 +27,5 @@
         "vakata/database" : "Install if you plan on using FileDatabaseStorage",
         "vakata/http" : "Install if you want to process uploads and HTTP requests",
         "psr/http-message" : "Install if you want to process uploads and HTTP requests"
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "vakata\\files\\test\\": "tests"
-        }
-    },
-    "scripts": {
-        "test": "phpunit",
-        "psr2": "php-cs-fixer fix ./src",
-        "phpdoc": "phpdoc-md"
     }
 }

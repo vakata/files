@@ -2,8 +2,6 @@
 
 namespace vakata\files;
 
-use vakata\http\RequestInterface;
-use vakata\http\UploadInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -11,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class FileStorage implements FileStorageInterface
 {
+    protected $mode;
     protected $prefix;
     protected $baseDirectory;
 
@@ -18,10 +17,11 @@ class FileStorage implements FileStorageInterface
      * Create an instance.
      * @param  string      $baseDirectory the base directory to store files in
      */
-    public function __construct($baseDirectory)
+    public function __construct(string $baseDirectory, int $mode = 0)
     {
         $this->baseDirectory = rtrim($baseDirectory, '/') . '/';
         $this->prefix = date('Y/m/d/');
+        $this->mode = $mode;
     }
     /**
      * Save additional settings for a file.
@@ -29,7 +29,7 @@ class FileStorage implements FileStorageInterface
      * @param  mixed           $settings data to store for the file
      * @return array                     the file array (as from getFile)
      */
-    public function saveSettings($file, $settings)
+    public function saveSettings($file, $settings): array
     {
         if (!is_array($file)) {
             $file = $this->get($file, false);
@@ -45,7 +45,7 @@ class FileStorage implements FileStorageInterface
      * @param  mixed      $settings optional data to save along with the file
      * @return array                an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromStream($handle, $name, $settings = null)
+    public function fromStream($handle, string $name, $settings = null)
     {
         $cnt = 0;
         $uen = urlencode($name);
@@ -65,6 +65,7 @@ class FileStorage implements FileStorageInterface
             fwrite($path, fread($handle, 4096));
         }
         fclose($path);
+        @chmod($path, 0664);
 
         $file = [
             'id'       => $this->prefix . $newName,
@@ -89,7 +90,7 @@ class FileStorage implements FileStorageInterface
      * @param  mixed      $settings optional data to save along with the file
      * @return array                an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromString($content, $name, $settings = null)
+    public function fromString(string $content, string $name, $settings = null)
     {
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, $content);
@@ -103,7 +104,7 @@ class FileStorage implements FileStorageInterface
      * @param  mixed    $settings optional data to save along with the file
      * @return array              an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromFile($path, $name = null, $settings = null)
+    public function fromFile(string $path, ?string $name = null, $settings = null): array
     {
         if (!is_file($path)) {
             throw new FileException('Not a valid file', 400);
@@ -111,88 +112,17 @@ class FileStorage implements FileStorageInterface
         $name = $name === null ? basename($path) : $name;
         return $this->fromStream(fopen($path, 'r'), $name, $settings);
     }
-    /**
-     * Store an Upload instance.
-     * @param  UploadInterface $upload   the instance to store
-     * @param  string|null     $name     an optional name to store under (defaults to the Upload name)
-     * @param  mixed           $settings optional data to save along with the file
-     * @return array                     an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromUpload(UploadInterface $upload, $name = null, $settings = null)
-    {
-        $name = $name === null ? $upload->getName() : $name;
-        return $this->fromStream($upload->getBody(), $name, $settings);
-    }
-    /**
-     * Store an upload from a Request object (supports chunked upload)
-     * @param  RequestInterface $request the request to process
-     * @param  string           $key      optional upload key, defaults to `"file"`
-     * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
-     * @param  mixed            $settings optional data to save along with the file
-     * @param  mixed            $user     optional user identifying code
-     * @return array                      an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null, $user = null)
-    {
-        if (!$request->hasUpload($key)) {
-            throw new FileException('No valid input files', 400);
-        }
-        $upload = $request->getUpload($key);
-        $user   = $user ?: session_id();
-        $name   = $name ?: ($upload->getName() !== 'blob' ? $upload->getName() : $request->getPost("name", "blob"));
-        $size   = $request->getPost("size", 0);
-        $chunk  = $request->getPost('chunk', 0, 'int');
-        $chunks = $request->getPost('chunks', 0, 'int');
-        $done   = $chunks <= 1 || $chunk >= $chunks - 1;
-        $temp   = $this->prefix . md5(implode('.', [
-            $name,
-            $chunks,
-            $size,
-            $user,
-            isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
-        ]));
-        if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
-            throw new FileException('The same file is already being uploaded', 400);
-        }
-        if ($chunk > 0 && !is_file($this->baseDirectory . $temp)) {
-            throw new FileException('No previous file parts', 400);
-        }
-
-        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
-            throw new FileException('Could not create upload directory');
-        }
-        if ($chunk === 0) {
-            $upload->saveAs($this->baseDirectory . $temp);
-        } else {
-            $upload->appendTo($this->baseDirectory . $temp);
-        }
-
-        if ($done) {
-            $data = $this->fromFile($this->baseDirectory . $temp, $name, $settings);
-            unlink($this->baseDirectory . $temp);
-            return $data;
-        }
-
-        return [
-            'id'       => $temp,
-            'name'     => $name,
-            'path'     => $this->baseDirectory . $temp,
-            'complete' => false,
-            'hash'     => '',
-            'size'     => 0
-        ];
-    }
 
     /**
      * Store an upload from a PSR-7 compatible Request object (supports chunked upload)
-     * @param  RequestInterface $request the request to process
+     * @param  ServerRequestInterface $request the request to process
      * @param  string           $key      optional upload key, defaults to `"file"`
      * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
      * @param  mixed            $settings optional data to save along with the file
      * @param  mixed            $user     optional user identifying code
      * @return array                      an array consisting of the ID, name, path, hash and size of the copied file
      */
-    public function fromPSRRequest(ServerRequestInterface $request, $key = 'file', $name = null, $settings = null, $user = null)
+    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $name = null, $settings = null, $user = null): array
     {
         $files = $request->getUploadedFiles();
         if (!isset($files[$key])) {
@@ -219,7 +149,7 @@ class FileStorage implements FileStorageInterface
             throw new FileException('No previous file parts', 400);
         }
 
-        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
+        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0775, true)) {
             throw new FileException('Could not create upload directory');
         }
         if ($chunk === 0) {
@@ -256,7 +186,7 @@ class FileStorage implements FileStorageInterface
      * @param  bool  $contents  should the result include the file path, defaults to false
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */
-    public function get($id, $contents = false)
+    public function get($id, bool $contents = false): array
     {
         if (!is_file($this->baseDirectory . $id)) {
             throw new FileNotFoundException('File not found', 404);

@@ -2,7 +2,6 @@
 
 namespace vakata\files;
 
-use vakata\http\RequestInterface;
 use vakata\database\DBInterface;
 
 /**
@@ -33,7 +32,7 @@ class FileDatabaseStorage extends FileStorage
      * @param  mixed           $settings data to store for the file
      * @return array                     the file array (as from getFile)
      */
-    public function saveSettings($file, $settings)
+    public function saveSettings($file, $settings): array
     {
         if (!is_array($file)) {
             $file = $this->get($file, false);
@@ -92,7 +91,7 @@ class FileDatabaseStorage extends FileStorage
      * @param  bool  $contents  should the result include the file path, defaults to false
      * @return array      an array consisting of the ID, name, path, hash and size of the file
      */
-    public function get($id, $contents = false)
+    public function get($id, bool $contents = false): array
     {
         $data = $this->db->one(
             "SELECT id, name, location, hash, bytesize, settings FROM {$this->table} WHERE id = ?",

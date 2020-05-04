@@ -2,16 +2,14 @@
 
 namespace vakata\files;
 
-use vakata\http\RequestInterface;
-use vakata\http\UploadInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 interface FileStorageInterface
 {
     public function saveSettings($file, $settings);
-    public function fromStream($handle, $name, $settings = null);
-    public function fromString($content, $name, $settings = null);
-    public function fromFile($path, $name = null, $settings = null);
-    public function fromUpload(UploadInterface $upload, $name = null, $settings = null);
-    public function fromRequest(RequestInterface $request, $key = 'file', $name = null, $settings = null);
-    public function get($id, $contents = false);
+    public function fromStream($handle, string $name, $settings = null);
+    public function fromString(string $content, string $name, $settings = null);
+    public function fromFile(string $path, ?string $name = null, $settings = null);
+    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $name = null, $settings = null, $user = null);
+    public function get($id, bool $contents = false);
 }
