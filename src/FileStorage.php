@@ -71,12 +71,12 @@ class FileStorage implements FileStorageInterface
         return $this->fromStream($handle, $name);
     }
 
-    public function fromFile(string $path): File
+    public function fromFile(string $path, ?string $name = null): File
     {
         if (!is_file($path)) {
             throw new FileException('Not a valid file', 400);
         }
-        return $this->fromStream(fopen($path, 'r'), basename($path));
+        return $this->fromStream(fopen($path, 'r'), $name ?? basename($path));
     }
 
     public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $state = null): File
