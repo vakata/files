@@ -19,82 +19,70 @@ class FileDatabaseStorage extends FileStorage
      * @param  DBInterface       $db            a database connection instance to use for storage
      * @param  string            $table         optional table name to store to, defaults to `"uploads"`
      */
-    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads', $reuse = false)
-    {
-        parent::__construct($baseDirectory);
+    public function __construct(
+        string $baseDirectory,
+        DBInterface $db,
+        string $table = 'uploads',
+        bool $reuse = false,
+        ?string $prefix = null,
+        ?string $tempDirectory = null
+    ) {
+        parent::__construct($baseDirectory, $prefix, $tempDirectory);
         $this->db = $db;
         $this->table = $table;
         $this->reuse = $reuse;
     }
-    /**
-     * Save additional settings for a file.
-     * @param  int|string|array $file     file id or array
-     * @param  mixed           $settings data to store for the file
-     * @return array                     the file array (as from getFile)
-     */
-    public function saveSettings($file, $settings): array
+
+    public function fromStream($handle, string $name): File
     {
-        if (!is_array($file)) {
-            $file = $this->get($file, false);
-        }
-        $this->db->query(
-            "UPDATE {$this->table} SET settings = ? WHERE id = ?",
-            [ json_encode($settings), $file['id'] ]
-        );
-        $file['settings'] = $settings;
-        return $file;
-    }
-    /**
-     * Store a stream.
-     * @param  resource   $handle   the stream to read and store
-     * @param  string     $name     the name to use for the stream
-     * @param  mixed      $settings optional data to save along with the file
-     * @return array              an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromStream($handle, $name, $settings = null)
-    {
-        $data = parent::fromStream($handle, $name);
-        if ($data['complete']) {
-            if ($this->reuse && $data['hash'] && $data['size']) {
+        $file = parent::fromStream($handle, $name);
+        if ($file->isComplete()) {
+            $location = $file->id();
+            if ($this->reuse && $file->hash() && $file->size()) {
                 $existing = $this->db->one(
                     "SELECT location FROM {$this->table} WHERE hash = ? AND bytesize = ?",
-                    [ $data['hash'], $data['size'] ]
+                    [ $file->hash(), $file->size() ]
                 );
                 if ($existing !== null && is_file($this->baseDirectory . $existing)) {
-                    unlink($data['path']);
-                    $data['id']   = $existing;
-                    $data['path'] = $this->baseDirectory . $existing;
+                    unlink($this->baseDirectory . $file->id());
+                    $location = $existing;
                 }
             }
             $id = 0;
             $sql = "INSERT INTO {$this->table} (name, location, bytesize, uploaded, hash, settings) VALUES (?, ?, ?, ?, ?, ?)";
             $par = [
-                $data['name'],
-                $data['id'],
-                $data['size'],
-                date('Y-m-d H:i:s'),
-                $data['hash'],
-                json_encode($settings)
+                $file->name(),
+                $location,
+                $file->size(),
+                date('Y-m-d H:i:s', time()),
+                $file->hash(),
+                json_encode($file->settings(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             ];
             if ($this->db->driverName() === 'oracle') {
                 $sql .= " RETURNING id INTO ?";
                 $par[] = &$id;
             }
             $q = $this->db->query($sql, $par);
-            $data['id'] = $this->db->driverName() === 'oracle' ? $id : $q->insertId();
+            $id = $this->db->driverName() === 'oracle' ? $id : $q->insertId();
+            unlink($this->baseDirectory . $file->id() . '.settings');
+            return new File(
+                $id,
+                $file->name(),
+                $file->hash(),
+                $file->uploaded(),
+                $file->size(),
+                $file->settings(),
+                true,
+                $file->path()
+            );
         }
-        return $data;
+        return $file;
     }
-    /**
-     * Get a file's metadata from storage.
-     * @param  mixed $id  the file ID to return
-     * @param  bool  $contents  should the result include the file path, defaults to false
-     * @return array      an array consisting of the ID, name, path, hash and size of the file
-     */
-    public function get($id, bool $contents = false): array
+
+    public function get(string $id): File
     {
         $data = $this->db->one(
-            "SELECT id, name, location, hash, bytesize, settings FROM {$this->table} WHERE id = ?",
+            "SELECT id, name, location, hash, bytesize, uploaded, settings FROM {$this->table} WHERE id = ?",
             $id
         );
         if (!$data) {
@@ -103,14 +91,25 @@ class FileDatabaseStorage extends FileStorage
         if (!is_file($this->baseDirectory . $data['location'])) {
             throw new FileNotFoundException('File not found', 404);
         }
-        return [
-            'id'       => $data['id'],
-            'name'     => $data['name'],
-            'path'     => $contents ? $this->baseDirectory . $data['location'] : null,
-            'complete' => true,
-            'hash'     => $data['hash'],
-            'size'     => $data['bytesize'],
-            'settings' => json_decode($data['settings'], true)
-        ];
+        return new File(
+            $data['id'],
+            $data['name'],
+            $data['hash'],
+            strtotime($data['uploaded']),
+            $data['bytesize'],
+            json_decode($data['setttings'], true),
+            true,
+            $this->baseDirectory . $data['location']
+        );
+    }
+
+    public function set(File $file): File
+    {
+        $temp = $this->get($file->id());
+        $this->db->query(
+            "UPDATE {$this->table} SET name = ?, uploaded = ?, settings = ? WHERE id = ?",
+            [ $file->name(), date('Y-m-d H:i:s', $file->uploaded()), json_encode($file->settings()), $temp->id() ]
+        );
+        return $file;
     }
 }

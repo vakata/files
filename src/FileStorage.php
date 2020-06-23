@@ -9,43 +9,18 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class FileStorage implements FileStorageInterface
 {
-    protected $mode;
     protected $prefix;
     protected $baseDirectory;
+    protected $tempDirectory;
 
-    /**
-     * Create an instance.
-     * @param  string      $baseDirectory the base directory to store files in
-     */
-    public function __construct(string $baseDirectory, int $mode = 0)
+    public function __construct(string $baseDirectory, ?string $prefix = null, ?string $tempDirectory = null)
     {
         $this->baseDirectory = rtrim($baseDirectory, '/') . '/';
-        $this->prefix = date('Y/m/d/');
-        $this->mode = $mode;
+        $this->tempDirectory = rtrim($tempDirectory ?? $baseDirectory, '/') . '/';
+        $this->prefix = trim($prefix ?? date('Y/m/d/'), '/\\') . '/';
     }
-    /**
-     * Save additional settings for a file.
-     * @param  int|string|array $file     file id or array
-     * @param  mixed           $settings data to store for the file
-     * @return array                     the file array (as from getFile)
-     */
-    public function saveSettings($file, $settings): array
-    {
-        if (!is_array($file)) {
-            $file = $this->get($file, false);
-        }
-        file_put_contents($file['path'] . '.settings', json_encode($settings));
-        $file['settings'] = $settings;
-        return $file;
-    }
-    /**
-     * Store a stream.
-     * @param  resource   $handle   the stream to read and store
-     * @param  string     $name     the name to use for the stream
-     * @param  mixed      $settings optional data to save along with the file
-     * @return array                an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromStream($handle, string $name, $settings = null)
+
+    public function fromStream($handle, string $name): File
     {
         $cnt = 0;
         $uen = urlencode($name);
@@ -56,7 +31,7 @@ class FileStorage implements FileStorageInterface
             $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
         } while (file_exists($this->baseDirectory . $this->prefix . $newName));
 
-        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0755, true)) {
+        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0775, true)) {
             throw new FileException('Could not create upload directory');
         }
 
@@ -66,71 +41,53 @@ class FileStorage implements FileStorageInterface
         }
         fclose($path);
         @chmod($path, 0664);
+        $uploaded = time();
+        file_put_contents(
+            $this->baseDirectory . $this->prefix . $newName . '.settings',
+            json_encode([
+                'name' => $name,
+                'uploaded' => $uploaded,
+                'data' => []
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        );
 
-        $file = [
-            'id'       => $this->prefix . $newName,
-            'name'     => $name,
-            'path'     => $this->baseDirectory . $this->prefix . $newName,
-            'complete' => true,
-            'hash'     => md5_file($this->baseDirectory . $this->prefix . $newName),
-            'size'     => filesize($this->baseDirectory . $this->prefix . $newName),
-            'settings' => $settings
-        ];
-
-        if (isset($settings)) {
-            $this->saveSettings($file, $settings);
-        }
-
-        return $file;
+        return new File(
+            $this->prefix . $newName,
+            $name,
+            md5_file($this->baseDirectory . $this->prefix . $newName),
+            $uploaded,
+            filesize($this->baseDirectory . $this->prefix . $newName),
+            [],
+            true,
+            $this->baseDirectory . $this->prefix . $newName
+        );
     }
-    /**
-     * Store a string in the file storage.
-     * @param  string     $content  the string to store
-     * @param  string     $name     the name to store the string under
-     * @param  mixed      $settings optional data to save along with the file
-     * @return array                an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromString(string $content, string $name, $settings = null)
+
+    public function fromString(string $content, string $name): File
     {
         $handle = fopen('php://temp', 'r+');
         fwrite($handle, $content);
         rewind($handle);
-        return $this->fromStream($handle, $name, $settings);
+        return $this->fromStream($handle, $name);
     }
-    /**
-     * Copy an existing file to the storage
-     * @param  string   $path the path to the file
-     * @param  string   $name the optional name to store the string under (defaults to the current file name)
-     * @param  mixed    $settings optional data to save along with the file
-     * @return array              an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromFile(string $path, ?string $name = null, $settings = null): array
+
+    public function fromFile(string $path): File
     {
         if (!is_file($path)) {
             throw new FileException('Not a valid file', 400);
         }
-        $name = $name === null ? basename($path) : $name;
-        return $this->fromStream(fopen($path, 'r'), $name, $settings);
+        return $this->fromStream(fopen($path, 'r'), basename($path));
     }
 
-    /**
-     * Store an upload from a PSR-7 compatible Request object (supports chunked upload)
-     * @param  ServerRequestInterface $request the request to process
-     * @param  string           $key      optional upload key, defaults to `"file"`
-     * @param  string|null      $name     an optional name to store under (defaults to the upload name or the post field)
-     * @param  mixed            $settings optional data to save along with the file
-     * @param  mixed            $user     optional user identifying code
-     * @return array                      an array consisting of the ID, name, path, hash and size of the copied file
-     */
-    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $name = null, $settings = null, $user = null): array
+    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $state = null): File
     {
         $files = $request->getUploadedFiles();
         if (!isset($files[$key])) {
             throw new FileException('No valid input files', 400);
         }
         $upload = $files[$key];
-        $user   = $user ?: session_id();
-        $name   = $name ?? ($upload->getClientFilename() !== 'blob' ? $upload->getClientFilename() : ($request->getParsedBody()["name"] ?? "blob"));
+        $state  = $state ?: session_id();
+        $name   = ($upload->getClientFilename() !== 'blob' ? $upload->getClientFilename() : ($request->getParsedBody()["name"] ?? "blob"));
         $size   = (int)($request->getParsedBody()["size"] ?? 0);
         $chunk  = (int)($request->getParsedBody()['chunk'] ?? 0);
         $chunks = (int)($request->getParsedBody()['chunks'] ?? 0);
@@ -139,68 +96,88 @@ class FileStorage implements FileStorageInterface
             $name,
             $chunks,
             $size,
-            $user,
+            $state,
             isset($_SERVER) && isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : ''
         ]));
-        if ($chunk === 0 && is_file($this->baseDirectory . $temp)) {
+        if ($chunk === 0 && is_file($this->tempDirectory . $temp)) {
             throw new FileException('The same file is already being uploaded', 400);
         }
-        if ($chunk > 0 && !is_file($this->baseDirectory . $temp)) {
+        if ($chunk > 0 && !is_file($this->tempDirectory . $temp)) {
             throw new FileException('No previous file parts', 400);
         }
 
-        if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0775, true)) {
+        if (!is_dir($this->tempDirectory . $this->prefix) && !mkdir($this->tempDirectory . $this->prefix, 0775, true)) {
             throw new FileException('Could not create upload directory');
         }
         if ($chunk === 0) {
-            $upload->moveTo($this->baseDirectory . $temp);
+            $upload->moveTo($this->tempDirectory . $temp);
         } else {
-            $upload->moveTo($this->baseDirectory . $temp . '_');
-            $inp = fopen($this->baseDirectory . $temp . '_', 'r');
-            $out = fopen($this->baseDirectory . $temp, 'a');
+            $upload->moveTo($this->tempDirectory . $temp . '_');
+            $inp = fopen($this->tempDirectory . $temp . '_', 'r');
+            $out = fopen($this->tempDirectory . $temp, 'a');
             stream_copy_to_stream($inp, $out);
             fclose($out);
             fclose($inp);
-            unlink($this->baseDirectory . $temp . '_');
+            unlink($this->tempDirectory . $temp . '_');
         }
 
-        if ($done) {
-            $data = $this->fromFile($this->baseDirectory . $temp, $name, $settings);
-            unlink($this->baseDirectory . $temp);
-            return $data;
+        if (!$done) {
+            return new File(
+                $temp,
+                $name,
+                '',
+                time(),
+                0,
+                [],
+                false,
+                $this->tempDirectory . $temp
+            );
         }
 
-        return [
-            'id'       => $temp,
-            'name'     => $name,
-            'path'     => $this->baseDirectory . $temp,
-            'complete' => false,
-            'hash'     => '',
-            'size'     => 0
-        ];
+        $file = $this->fromFile($this->tempDirectory . $temp, $name);
+        unlink($this->tempDirectory . $temp);
+        return $file;
     }
 
-    /**
-     * Get a file's metadata from storage.
-     * @param  mixed $id        the file ID to return
-     * @param  bool  $contents  should the result include the file path, defaults to false
-     * @return array      an array consisting of the ID, name, path, hash and size of the file
-     */
-    public function get($id, bool $contents = false): array
+    public function get(string $id): File
     {
         if (!is_file($this->baseDirectory . $id)) {
             throw new FileNotFoundException('File not found', 404);
         }
-        return [
-            'id'       => $id,
-            'name'     => substr(basename($id), 5, -3),
-            'path'     => $contents ? $this->baseDirectory . $id : null,
-            'complete' => true,
-            'hash'     => md5_file($this->baseDirectory . $id),
-            'size'     => filesize($this->baseDirectory . $id),
-            'settings' => is_file($this->baseDirectory . $id) ?
-                json_decode($this->baseDirectory . $id . '.settings', true) :
-                null
-        ];
+
+        if (is_file($this->baseDirectory . $id . '.settings')) {
+            $settings = file_get_contents($this->baseDirectory . $id . '.settings');
+            if ($settings) {
+                $settings = json_decode($settings, true);
+            }
+            if (!is_array($settings)) {
+                $settings = [];
+            }
+        }
+
+        return new File(
+            $id,
+            $settings['name'] ?? substr(basename($id), 5, -3),
+            md5_file($this->baseDirectory . $id),
+            $settings['uploaded'] ?? filectime($this->baseDirectory . $id),
+            filesize($this->baseDirectory . $id),
+            $settings['data'] ?? [],
+            true,
+            $this->baseDirectory . $id
+        );
+    }
+
+    public function set(File $file): File
+    {
+        $temp = $this->get($file->id());
+        file_put_contents(
+            $this->baseDirectory . $temp->id() . '.settings',
+            json_encode([
+                'name' => $file->name(),
+                'uploaded' => $file->uploaded(),
+                'data' => $file->settings()
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        );
+        return $file;
     }
 }

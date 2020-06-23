@@ -6,10 +6,11 @@ use Psr\Http\Message\ServerRequestInterface;
 
 interface FileStorageInterface
 {
-    public function saveSettings($file, $settings);
-    public function fromStream($handle, string $name, $settings = null);
-    public function fromString(string $content, string $name, $settings = null);
-    public function fromFile(string $path, ?string $name = null, $settings = null);
-    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $name = null, $settings = null, $user = null);
-    public function get($id, bool $contents = false);
+    public function fromStream($handle, string $name): File;
+    public function fromString(string $content, string $name): File;
+    public function fromFile(string $path): File;
+    public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $state = null): File;
+    
+    public function get(string $id): File;
+    public function set(File $file): File;
 }

@@ -1,0 +1,124 @@
+<?php
+
+namespace vakata\files;
+
+class File
+{
+    protected $id;
+    protected $name;
+    protected $hash;
+    protected $uploaded;
+    protected $size;
+    protected $settings;
+    protected $complete;
+    protected $location;
+
+    public function __construct(
+        string $id,
+        string $name,
+        string $hash,
+        int $uploaded,
+        int $size,
+        ?array $settings = null,
+        bool $complete = true,
+        $location = null
+    ) {
+        $this->id = $id;
+        $this->name = $name;
+        $this->hash = $hash;
+        $this->uploaded = $uploaded;
+        $this->size = $size;
+        $this->settings = $settings ?? [];
+        $this->complete = $complete;
+        $this->location = $location;
+    }
+
+    public function id(): string
+    {
+        return $this->id;
+    }
+    public function name(): string
+    {
+        return $this->name;
+    }
+    public function hash(): string
+    {
+        return $this->hash;
+    }
+    public function uploaded(): int
+    {
+        return $this->uploaded;
+    }
+    public function size(): int
+    {
+        return $this->size;
+    }
+    public function settings(): array
+    {
+        return $this->settings;
+    }
+    public function setting(string $key): array
+    {
+        return $this->settings[$key] ?? null;
+    }
+    public function isComplete(): bool
+    {
+        return $this->complete;
+    }
+
+    public function setName(string $name): self
+    {
+        $this->name = $name;
+        return $this;
+    }
+    public function setUploaded(int $uploaded): self
+    {
+        $this->uploaded = $uploaded;
+        return $this;
+    }
+    public function setSettings(array $settings): self
+    {
+        $this->settings = $settings;
+        return $this;
+    }
+    public function setSetting(string $k, $v): self
+    {
+        $this->setting[$k] = $v;
+        return $this;
+    }
+
+    public function __get($k)
+    {
+        if (in_array($k, [ 'id', 'name', 'hash', 'uploaded', 'size', 'settings' ])) {
+            return $this->{$k}();
+        }
+        return $this->setting($k);
+    }
+    public function __set($k, $v)
+    {
+        if ($k === 'name') {
+            $this->setName($v);
+        } elseif ($k === 'uploaded') {
+            $this->setUploaded($v);
+        } elseif ($k === 'settings') {
+            $this->setSettings($v);
+        } else {
+            $this->setSetting($k, $v);
+        }
+    }
+
+    public function path(): ?string
+    {
+        if (is_callable($this->location)) {
+            $this->location = call_user_func($this->location);
+        }
+        return $this->location;
+    }
+    public function content(bool $asString = false)
+    {
+        if (!$this->path()) {
+            throw new FileException('No file data');
+        }
+        return $asString ? file_get_contents($this->path()) : fopen($this->path(), 'r');
+    }
+}
