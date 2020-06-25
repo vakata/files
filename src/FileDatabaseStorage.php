@@ -97,7 +97,7 @@ class FileDatabaseStorage extends FileStorage
             $data['hash'],
             strtotime($data['uploaded']),
             $data['bytesize'],
-            json_decode($data['setttings'], true),
+            json_decode($data['settings'] ?? '[]', true),
             true,
             $this->baseDirectory . $data['location']
         );
