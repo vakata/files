@@ -121,4 +121,8 @@ class File
         }
         return $asString ? file_get_contents($this->path()) : fopen($this->path(), 'r');
     }
+    public function ext(): string
+    {
+        return strtolower(array_reverse(explode('.', $this->name()))[0] ?? '');
+    }
 }

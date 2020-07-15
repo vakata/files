@@ -107,8 +107,15 @@ class FileDatabaseStorage extends FileStorage
     {
         $temp = $this->get($file->id());
         $this->db->query(
-            "UPDATE {$this->table} SET name = ?, uploaded = ?, settings = ? WHERE id = ?",
-            [ $file->name(), date('Y-m-d H:i:s', $file->uploaded()), json_encode($file->settings()), $temp->id() ]
+            "UPDATE {$this->table} SET name = ?, bytesize = ?, uploaded = ?, hash = ?, settings = ? WHERE id = ?",
+            [
+                $file->name(),
+                $file->size(),
+                date('Y-m-d H:i:s', $file->uploaded()),
+                $file->hash(),
+                json_encode($file->settings()),
+                $temp->id()
+            ]
         );
         return $file;
     }
