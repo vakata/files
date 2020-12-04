@@ -40,7 +40,7 @@ class FileStorage implements FileStorageInterface
             fwrite($path, fread($handle, 4096));
         }
         fclose($path);
-        @chmod($path, 0664);
+        @chmod($this->baseDirectory . $this->prefix . $newName, 0664);
         $uploaded = time();
         file_put_contents(
             $this->baseDirectory . $this->prefix . $newName . '.settings',
