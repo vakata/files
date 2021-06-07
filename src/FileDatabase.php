@@ -31,6 +31,19 @@ class FileDatabase extends FileDatabaseStorage
                         [ date('Y-m-d H:i:s'), $file->id(), $handle ]
                     );
                     $this->db->commit($trans);
+                } elseif ($this->db->driverName() === 'postgre') {
+                    $trans = $this->db->begin();
+                    $this->db->query(
+                        "UPDATE {$this->table} SET data = decode(?, 'hex') WHERE id = ?",
+                        [ bin2hex(''), $file->id() ]
+                    );
+                    while (!feof($handle)) {
+                        $this->db->query(
+                            "UPDATE {$this->table} SET data = data || decode(?, 'hex') WHERE id = ?",
+                            [ bin2hex(fread($handle, 500000)), $file->id() ]
+                        );
+                    }
+                    $this->db->commit($trans);
                 } else {
                     $this->db->query(
                         "UPDATE {$this->table} SET data = ? WHERE id = ?",
@@ -75,6 +88,9 @@ class FileDatabase extends FileDatabaseStorage
                         "SELECT SUBSTRING(data FROM ${i} FOR ${chunk}) FROM {$this->table} WHERE id = ?",
                         $id
                     );
+                    if ($this->db->driverName() === 'postgre') {
+                        $data = hex2bin(substr($data, 2));
+                    }
                     file_put_contents($name, $data, FILE_APPEND);
                     $i += $chunk;
                     if (strlen($data) < $chunk) {
