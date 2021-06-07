@@ -67,7 +67,20 @@ class FileDatabase extends FileDatabaseStorage
             true,
             function () use ($id) {
                 $name = tempnam($this->baseDirectory, "DWN");
-                file_put_contents($name, $this->db->one("SELECT data FROM {$this->table} WHERE id = ?", $id));
+                file_put_contents($name, '');
+                $i = 1;
+                $chunk = 100000;
+                while (true) {
+                    $data = $this->db->one(
+                        "SELECT SUBSTRING(data FROM ${i} FOR ${chunk}) FROM {$this->table} WHERE id = ?",
+                        $id
+                    );
+                    file_put_contents($name, $data, FILE_APPEND);
+                    $i += $chunk;
+                    if (strlen($data) < $chunk) {
+                        break;
+                    }
+                }
                 @register_shutdown_function(function () use ($name) { @unlink($name); });
                 return $name;
             }
