@@ -103,9 +103,16 @@ class FileDatabaseStorage extends FileStorage
         );
     }
 
-    public function set(File $file): File
+    public function set(File $file, $contents = null): File
     {
         $temp = $this->get($file->id());
+        if ($contents !== null) {
+            $handle = fopen($temp->path(), 'w');
+            while (!feof($contents)) {
+                fwrite($handle, fread($contents, 4096));
+            }
+            fclose($handle);
+        }
         $this->db->query(
             "UPDATE {$this->table} SET name = ?, bytesize = ?, uploaded = ?, hash = ?, settings = ? WHERE id = ?",
             [

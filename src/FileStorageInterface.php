@@ -12,5 +12,5 @@ interface FileStorageInterface
     public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $state = null): File;
     
     public function get(string $id): File;
-    public function set(File $file): File;
+    public function set(File $file, $contents = null): File;
 }

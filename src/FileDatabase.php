@@ -102,4 +102,38 @@ class FileDatabase extends FileDatabaseStorage
             }
         );
     }
+    public function set(File $file, $contents = null): File
+    {
+        parent::set($file, null);
+        $temp = $this->get($file->id());
+        if ($contents !== null) {
+            if ($this->db->driverName() === 'oracle') {
+                $trans = $this->db->begin();
+                $this->db->query(
+                    "UPDATE {$this->table} SET uploaded = ?, data = EMPTY_BLOB() WHERE id = ? RETURNING data INTO ?",
+                    [ date('Y-m-d H:i:s'), $temp->id(), $contents ]
+                );
+                $this->db->commit($trans);
+            } elseif ($this->db->driverName() === 'postgre') {
+                $trans = $this->db->begin();
+                $this->db->query(
+                    "UPDATE {$this->table} SET data = decode(?, 'hex') WHERE id = ?",
+                    [ bin2hex(''), $temp->id() ]
+                );
+                while (!feof($contents)) {
+                    $this->db->query(
+                        "UPDATE {$this->table} SET data = data || decode(?, 'hex') WHERE id = ?",
+                        [ bin2hex(fread($contents, 500000)), $temp->id() ]
+                    );
+                }
+                $this->db->commit($trans);
+            } else {
+                $this->db->query(
+                    "UPDATE {$this->table} SET data = ? WHERE id = ?",
+                    [ $contents, $temp->id() ]
+                );
+            }
+        }
+        return $file;
+    }
 }

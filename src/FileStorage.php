@@ -167,9 +167,16 @@ class FileStorage implements FileStorageInterface
         );
     }
 
-    public function set(File $file): File
+    public function set(File $file, $contents = null): File
     {
         $temp = $this->get($file->id());
+        if ($contents !== null) {
+            $handle = fopen($temp->path(), 'w');
+            while (!feof($contents)) {
+                fwrite($handle, fread($contents, 4096));
+            }
+            fclose($handle);
+        }
         file_put_contents(
             $this->baseDirectory . $temp->id() . '.settings',
             json_encode([
