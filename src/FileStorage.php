@@ -24,8 +24,8 @@ class FileStorage implements FileStorageInterface
     {
         $cnt = 0;
         $uen = urlencode($name);
-        if (strlen($uen) > 245) { // keep total length under 255
-            $uen = preg_replace(['(%[a-f0-9]*$)i', '(%D0$)i'], '', substr($uen, 0, 245));
+        if (strlen($uen) > 230) { // keep total length under 255
+            $uen = preg_replace(['(%[a-f0-9]*$)i', '(%D0$)i'], '', substr($uen, 0, 230));
         }
         do {
             $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
