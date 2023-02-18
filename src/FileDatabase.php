@@ -85,7 +85,7 @@ class FileDatabase extends FileDatabaseStorage
                 $chunk = 100000;
                 while (true) {
                     $data = $this->db->one(
-                        "SELECT SUBSTRING(data FROM ${i} FOR ${chunk}) FROM {$this->table} WHERE id = ?",
+                        "SELECT SUBSTRING(data FROM {$i} FOR {$chunk}) FROM {$this->table} WHERE id = ?",
                         $id
                     );
                     if ($this->db->driverName() === 'postgre') {
