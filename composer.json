@@ -25,6 +25,7 @@
     },
     "suggest": {
         "vakata/database" : "Install if you plan on using FileDatabaseStorage",
+        "vakata/jwt" : "Install if you plan on using GCS",
         "vakata/http" : "Install if you want to process uploads and HTTP requests",
         "psr/http-message" : "Install if you want to process uploads and HTTP requests"
     }

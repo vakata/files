@@ -20,7 +20,7 @@ class FileStorage implements FileStorageInterface
         $this->prefix = trim($prefix ?? date('Y/m/d/'), '/\\') . '/';
     }
 
-    public function fromStream($handle, string $name): File
+    protected function getLocation(string $name): string
     {
         $cnt = 0;
         $uen = urlencode($name);
@@ -31,19 +31,26 @@ class FileStorage implements FileStorageInterface
             $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
         } while (file_exists($this->baseDirectory . $this->prefix . $newName));
 
+        return $this->prefix . $newName;
+    }
+
+    public function fromStream($handle, string $name): File
+    {
+        $location = $this->getLocation($name);
+
         if (!is_dir($this->baseDirectory . $this->prefix) && !mkdir($this->baseDirectory . $this->prefix, 0775, true)) {
             throw new FileException('Could not create upload directory');
         }
 
-        $path = fopen($this->baseDirectory . $this->prefix . $newName, 'w');
+        $path = fopen($this->baseDirectory . $location, 'w');
         while (!feof($handle)) {
             fwrite($path, fread($handle, 4096));
         }
         fclose($path);
-        @chmod($this->baseDirectory . $this->prefix . $newName, 0664);
+        @chmod($this->baseDirectory . $location, 0664);
         $uploaded = time();
         file_put_contents(
-            $this->baseDirectory . $this->prefix . $newName . '.settings',
+            $this->baseDirectory . $location . '.settings',
             json_encode([
                 'name' => $name,
                 'uploaded' => $uploaded,
@@ -52,14 +59,14 @@ class FileStorage implements FileStorageInterface
         );
 
         return new File(
-            $this->prefix . $newName,
+            $location,
             $name,
-            md5_file($this->baseDirectory . $this->prefix . $newName),
+            md5_file($this->baseDirectory . $location),
             $uploaded,
-            filesize($this->baseDirectory . $this->prefix . $newName),
+            filesize($this->baseDirectory . $location),
             [],
             true,
-            $this->baseDirectory . $this->prefix . $newName
+            $this->baseDirectory . $location
         );
     }
 

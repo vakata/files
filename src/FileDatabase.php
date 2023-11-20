@@ -13,12 +13,23 @@ class FileDatabase extends FileDatabaseStorage
     public function __construct($baseDirectory, DBInterface $db, $table = 'uploads')
     {
         parent::__construct($baseDirectory, $db, $table, false, null, $baseDirectory);
-        $this->prefix = '';
+    }
+
+    protected function getLocation(string $name): string
+    {
+        $cnt = 0;
+        $uen = urlencode($name);
+        do {
+            $newName = sprintf('%04d', $cnt++) . '.' . $uen;
+        } while ($this->db->one("SELECT 1 FROM {$this->table} WHERE location = ?", $this->prefix . $newName));
+
+        return $this->prefix . $newName;
     }
 
     public function fromStream($handle, $name): File
     {
         $file = parent::fromStream($handle, $name);
+        $location = $this->getLocation($name);
 
         if ($file->isComplete()) {
             try {
@@ -27,15 +38,15 @@ class FileDatabase extends FileDatabaseStorage
                 if ($this->db->driverName() === 'oracle') {
                     $this->db->begin();
                     $this->db->query(
-                        "UPDATE {$this->table} SET uploaded = ?, data = EMPTY_BLOB() WHERE id = ? RETURNING data INTO ?",
-                        [ date('Y-m-d H:i:s'), $file->id(), $handle ]
+                        "UPDATE {$this->table} SET location = ?, uploaded = ?, data = EMPTY_BLOB() WHERE id = ? RETURNING data INTO ?",
+                        [ $location, date('Y-m-d H:i:s'), $file->id(), $handle ]
                     );
                     $this->db->commit();
                 } elseif ($this->db->driverName() === 'postgre') {
                     $this->db->begin();
                     $this->db->query(
-                        "UPDATE {$this->table} SET data = decode(?, 'hex') WHERE id = ?",
-                        [ bin2hex(''), $file->id() ]
+                        "UPDATE {$this->table} SET location = ?, data = decode(?, 'hex') WHERE id = ?",
+                        [ $location, bin2hex(''), $file->id() ]
                     );
                     while (!feof($handle)) {
                         $this->db->query(
@@ -46,8 +57,8 @@ class FileDatabase extends FileDatabaseStorage
                     $this->db->commit();
                 } else {
                     $this->db->query(
-                        "UPDATE {$this->table} SET data = ? WHERE id = ?",
-                        [ $handle, $file->id() ]
+                        "UPDATE {$this->table} SET location = ?, data = ? WHERE id = ?",
+                        [ $location, $handle, $file->id() ]
                     );
                 }
                 fclose($handle);
