@@ -57,7 +57,7 @@ class File
     {
         return $this->settings;
     }
-    public function setting(string $key): array
+    public function setting(string $key): mixed
     {
         return $this->settings[$key] ?? null;
     }
