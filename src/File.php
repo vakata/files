@@ -87,6 +87,17 @@ class File
         return $this;
     }
 
+    public function setSize(int $size): self
+    {
+        $this->size = $size;
+        return $this;
+    }
+    public function setHash(string $hash): self
+    {
+        $this->hash = $hash;
+        return $this;
+    }
+
     public function __get($k)
     {
         if (in_array($k, [ 'id', 'name', 'hash', 'uploaded', 'size', 'settings' ])) {
