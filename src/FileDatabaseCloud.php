@@ -73,7 +73,10 @@ class FileDatabaseCloud extends FileDatabaseStorage
             true,
             function () use ($loc) {
                 $name = tempnam($this->baseDirectory, "DWN");
-                file_put_contents($name, $this->cloud->get($loc));
+                stream_copy_to_stream(
+                    $this->cloud->stream($loc),
+                    fopen($name, 'wb')
+                );
                 @register_shutdown_function(function () use ($name) { @unlink($name); });
                 return $name;
             }

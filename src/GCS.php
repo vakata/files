@@ -91,6 +91,25 @@ class GCS implements CloudInterface
             ])
         );
     }
+    public function stream(string $name): mixed
+    {
+        $bucket = $this->bucket;
+        $res = fopen(
+            self::BASEURI . '/storage/v1/b/' . $bucket . '/o/' . urlencode($name) . '?alt=media',
+            'rb',
+            false,
+            stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'header' => 'Authorization: Bearer ' . $this->token
+                ]
+            ])
+        );
+        if ($res === false) {
+            throw new RuntimeException('Could not list bucket');
+        }
+        return $res;
+    }
     public function upload(mixed $handle, ?string $name = null): string
     {
         $bucket = $this->bucket;

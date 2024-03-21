@@ -43,7 +43,8 @@ class S3 implements CloudInterface
         string $uri,
         array $parameters = [],
         string $data = '',
-        ?string $method = null
+        ?string $method = null,
+        bool $stream = false
     ): mixed
     {
         $method = $method ?? (strlen($data) ? 'POST' : 'GET');
@@ -138,17 +139,30 @@ class S3 implements CloudInterface
             $headers[] = $k . ': ' . $v;
         }
 
-        $res = file_get_contents(
-            $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
-            false,
-            stream_context_create([
-                'http' => [
-                    'method' => $method,
-                    'header' => $headers,
-                    'content' => strlen($data) ? $data : null
-                ]
-            ])
-        );
+        $res = $stream ?
+            file_get_contents(
+                $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
+                false,
+                stream_context_create([
+                    'http' => [
+                        'method' => $method,
+                        'header' => $headers,
+                        'content' => strlen($data) ? $data : null
+                    ]
+                ])
+            ) :
+            fopen(
+                $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
+                'rb',
+                false,
+                stream_context_create([
+                    'http' => [
+                        'method' => $method,
+                        'header' => $headers,
+                        'content' => strlen($data) ? $data : null
+                    ]
+                ])
+            );
         if ($res === false) {
             throw new RuntimeException('Could not list bucket');
         }
@@ -187,6 +201,10 @@ class S3 implements CloudInterface
     public function get(string $name): string
     {
         return $this->request('/' . $this->bucket . '/' . $name);
+    }
+    public function stream(string $name): mixed
+    {
+        return $this->request('/' . $this->bucket . '/' . $name, [], '', null, true);
     }
     public function upload(mixed $handle, ?string $name = null): string
     {
