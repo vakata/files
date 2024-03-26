@@ -13,6 +13,7 @@ class S3 implements CloudInterface
     protected string $bucket;
     protected string $access;
     protected string $secret;
+    protected array $headers;
     
     public static function fromFile(string $path, string $bucket): self
     {
@@ -37,6 +38,7 @@ class S3 implements CloudInterface
         $this->bucket = $bucket;
         $this->endpoint = $endpoint;
         $this->region = $region;
+        $this->headers = [];
     }
 
     protected function request(
@@ -140,17 +142,6 @@ class S3 implements CloudInterface
         }
 
         $res = $stream ?
-            file_get_contents(
-                $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
-                false,
-                stream_context_create([
-                    'http' => [
-                        'method' => $method,
-                        'header' => $headers,
-                        'content' => strlen($data) ? $data : null
-                    ]
-                ])
-            ) :
             fopen(
                 $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
                 'rb',
@@ -162,7 +153,30 @@ class S3 implements CloudInterface
                         'content' => strlen($data) ? $data : null
                     ]
                 ])
+            ) :
+            file_get_contents(
+                $this->endpoint . $uri . (strlen($queryString) ? '?' . $queryString : ''),
+                false,
+                stream_context_create([
+                    'http' => [
+                        'method' => $method,
+                        'header' => $headers,
+                        'content' => strlen($data) ? $data : null
+                    ]
+                ])
             );
+        if (!$stream) {
+            $this->headers = [];
+            foreach ($http_response_header ?? [] as $k => $v) {
+                if ($k === 0) {
+                    continue;
+                }
+                $temp = explode(':', $v, 2);
+                if (count($temp) === 2) {
+                    $this->headers[trim($temp[0])] = trim($temp[1]);
+                }
+            }
+        }
         if ($res === false) {
             throw new RuntimeException('Could not list bucket');
         }
@@ -238,7 +252,35 @@ class S3 implements CloudInterface
         if (!is_resource($handle)) {
             throw new RuntimeException('Invalid handle');
         }
-        $this->request('/' . $this->bucket . '/' . $name, [], stream_get_contents($handle), 'PUT');
+        $res = json_decode(
+            json_encode(
+                simplexml_load_string(
+                    $this->request('/' . $this->bucket . '/' . $name, [ 'uploads' => '' ], '', 'POST')
+                )
+            ),
+            true
+        );
+        $uid = $res['UploadId'];
+        $ptn = 0;
+        $res = [];
+        while (!feof($handle) && ($data = fread($handle, 5 * 1024 * 1024))) {
+            $this->request(
+                '/' . $this->bucket . '/' . $name,
+                [ 'uploadId' => $uid, 'partNumber' => ++$ptn ],
+                $data,
+                'PUT'
+            );
+            $res[] =
+                '<Part>
+                    <ETag>'.trim($this->headers['ETag'], '"').'</ETag>
+                    <PartNumber>'.$ptn.'</PartNumber>
+                </Part>';
+        }
+        $res = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
+            '<CompleteMultipartUpload xmlns="http://s3.amazonaws.com/doc/2006-03-01/">' . "\n" .
+            implode("\n", $res) . "\n" .
+            '</CompleteMultipartUpload>';
+        $this->request('/' . $this->bucket . '/' . $name, [ 'uploadId' => $uid ], $res, 'POST');
         return $this->endpoint . '/' . $this->bucket . '/' . $name;
     }
 }
