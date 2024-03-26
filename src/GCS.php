@@ -144,8 +144,21 @@ class GCS implements CloudInterface
         if (!is_resource($handle)) {
             throw new RuntimeException('Invalid handle');
         }
-        file_get_contents(
-            self::BASEURI . '/upload/storage/v1/b/' . $bucket . '/o?uploadType=media&name=' . $name,
+        // file_get_contents(
+        //     self::BASEURI . '/upload/storage/v1/b/' . $bucket . '/o?uploadType=media&name=' . $name,
+        //     false,
+        //     stream_context_create([
+        //         'http' => [
+        //             'method' => 'POST',
+        //             'header' => '' .
+        //                 'Content-Type: application/octet-stream' . "\r\n" .
+        //                 'Authorization: Bearer ' . $this->token . "\r\n",
+        //             'content' => stream_get_contents($handle)
+        //         ]
+        //     ])
+        // );
+        $res = file_get_contents(
+            self::BASEURI . '/' . $bucket . '/' . $name . '?uploads',
             false,
             stream_context_create([
                 'http' => [
@@ -153,7 +166,58 @@ class GCS implements CloudInterface
                     'header' => '' .
                         'Content-Type: application/octet-stream' . "\r\n" .
                         'Authorization: Bearer ' . $this->token . "\r\n",
-                    'content' => stream_get_contents($handle)
+                    'content' => ''
+                ]
+            ])
+        );
+        $res = json_decode(json_encode(simplexml_load_string($res)), true);
+        $uid = $res['UploadId'];
+        $ptn = 0;
+        $res = [];
+        while (!feof($handle) && ($data = fread($handle, 5 * 1024 * 1024))) {
+            file_get_contents(
+                self::BASEURI . '/' . $bucket . '/' . $name . '?partNumber='.(++$ptn).'&uploadId=' . $uid,
+                false,
+                stream_context_create([
+                    'http' => [
+                        'method' => 'PUT',
+                        'header' => '' .
+                            'Content-Type: application/octet-stream' . "\r\n" .
+                            'Authorization: Bearer ' . $this->token . "\r\n",
+                        'content' => $data
+                    ]
+                ])
+            );
+            $headers = [];
+            foreach ($http_response_header ?? [] as $k => $v) {
+                if ($k === 0) {
+                    continue;
+                }
+                $temp = explode(':', $v, 2);
+                if (count($temp) === 2) {
+                    $headers[trim($temp[0])] = trim($temp[1]);
+                }
+            }
+            $res[] =
+                '<Part>
+                    <PartNumber>'.$ptn.'</PartNumber>
+                    <ETag>'.trim($headers['ETag'], '"').'</ETag>
+                </Part>';
+        }
+        $res = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
+            '<CompleteMultipartUpload>' . "\n" .
+            implode("\n", $res) . "\n" .
+            '</CompleteMultipartUpload>';
+        file_get_contents(
+            self::BASEURI . '/' . $bucket . '/' . $name . '?uploadId=' . $uid,
+            false,
+            stream_context_create([
+                'http' => [
+                    'method' => 'POST',
+                    'header' => '' .
+                        'Content-Type: application/xml' . "\r\n" .
+                        'Authorization: Bearer ' . $this->token . "\r\n",
+                    'content' => $res
                 ]
             ])
         );
