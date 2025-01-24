@@ -12,6 +12,7 @@ class File
     protected $settings;
     protected $complete;
     protected $location;
+    protected $link;
 
     public function __construct(
         string $id,
@@ -21,7 +22,8 @@ class File
         int $size,
         ?array $settings = null,
         bool $complete = true,
-        $location = null
+        $location = null,
+        string $link = ''
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -31,6 +33,7 @@ class File
         $this->settings = $settings ?? [];
         $this->complete = $complete;
         $this->location = $location;
+        $this->link = $link;
     }
 
     public function id(): string
@@ -135,5 +138,9 @@ class File
     public function ext(): string
     {
         return strtolower(array_reverse(explode('.', $this->name()))[0] ?? '');
+    }
+    public function link(): string
+    {
+        return $this->link;
     }
 }

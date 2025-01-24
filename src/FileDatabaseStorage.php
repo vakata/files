@@ -25,9 +25,10 @@ class FileDatabaseStorage extends FileStorage
         string $table = 'uploads',
         bool $reuse = false,
         ?string $prefix = null,
-        ?string $tempDirectory = null
+        ?string $tempDirectory = null,
+        $linkCallback = null
     ) {
-        parent::__construct($baseDirectory, $prefix, $tempDirectory);
+        parent::__construct($baseDirectory, $prefix, $tempDirectory, $linkCallback);
         $this->db = $db;
         $this->table = $table;
         $this->reuse = $reuse;
@@ -73,7 +74,16 @@ class FileDatabaseStorage extends FileStorage
                 $file->size(),
                 $file->settings(),
                 true,
-                $file->path()
+                $file->path(),
+                call_user_func(
+                    $this->linkCallback,
+                    [
+                        'id' => $id,
+                        'location' => $location,
+                        'name' => $file->name(),
+                        'path' => $file->path()
+                    ]
+                )
             );
         }
         return $file;
@@ -99,7 +109,16 @@ class FileDatabaseStorage extends FileStorage
             $data['bytesize'],
             json_decode($data['settings'] ?? '[]', true),
             true,
-            $this->baseDirectory . $data['location']
+            $this->baseDirectory . $data['location'],
+            call_user_func(
+                $this->linkCallback,
+                [
+                    'id' => $data['id'],
+                    'location' => $data['location'],
+                    'name' => $data['name'],
+                    'path' => $this->baseDirectory . $data['location']
+                ]
+            )
         );
     }
 
