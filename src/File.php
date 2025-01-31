@@ -86,7 +86,7 @@ class File
     }
     public function setSetting(string $k, $v): self
     {
-        $this->setting[$k] = $v;
+        $this->settings[$k] = $v;
         return $this;
     }
 
