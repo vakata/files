@@ -12,19 +12,16 @@ class FileStorage implements FileStorageInterface
     protected $prefix;
     protected $baseDirectory;
     protected $tempDirectory;
-    protected $linkCallback;
 
     public function __construct(
         string $baseDirectory,
         ?string $prefix = null,
-        ?string $tempDirectory = null,
-        $linkCallback = null
+        ?string $tempDirectory = null
     )
     {
         $this->baseDirectory = rtrim($baseDirectory, '/') . '/';
         $this->tempDirectory = rtrim($tempDirectory ?? $baseDirectory, '/') . '/';
         $this->prefix = trim($prefix ?? date('Y/m/d/'), '/\\') . '/';
-        $this->linkCallback = $linkCallback ? $linkCallback : function () { return ''; };
     }
 
     protected function getLocation(string $name): string
@@ -73,16 +70,7 @@ class FileStorage implements FileStorageInterface
             filesize($this->baseDirectory . $location),
             [],
             true,
-            $this->baseDirectory . $location,
-            call_user_func(
-                $this->linkCallback,
-                [
-                    'id' => $location,
-                    'location' => $location,
-                    'name' => $name,
-                    'path' => $this->baseDirectory . $location
-                ]
-            )
+            $this->baseDirectory . $location
         );
     }
 
@@ -187,16 +175,7 @@ class FileStorage implements FileStorageInterface
             filesize($this->baseDirectory . $id),
             $settings['data'] ?? [],
             true,
-            $this->baseDirectory . $id,
-            call_user_func(
-                $this->linkCallback,
-                [
-                    'id' => $id,
-                    'location' => $id,
-                    'name' => $settings['name'] ?? substr(basename($id), 5, -3),
-                    'path' => $this->baseDirectory . $id
-                ]
-            )
+            $this->baseDirectory . $id
         );
     }
 

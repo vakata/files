@@ -16,12 +16,11 @@ class FileDatabaseCloud extends FileDatabaseStorage
         CloudInterface $cloud,
         string $baseDirectory,
         DBInterface $db,
-        $table = 'uploads',
-        $linkCallback = null
+        $table = 'uploads'
     )
     {
         $this->cloud = $cloud;
-        parent::__construct($baseDirectory, $db, $table, false, null, $baseDirectory, $linkCallback);
+        parent::__construct($baseDirectory, $db, $table, false, null, $baseDirectory);
     }
 
     protected function getLocation(string $name): string
@@ -85,16 +84,7 @@ class FileDatabaseCloud extends FileDatabaseStorage
                 );
                 @register_shutdown_function(function () use ($name) { @unlink($name); });
                 return $name;
-            },
-            call_user_func(
-                $this->linkCallback,
-                [
-                    'id' => $data['id'],
-                    'location' => $loc,
-                    'name' => $data['name'],
-                    'path' => $loc
-                ]
-            )
+            }
         );
     }
     public function set(File $file, $contents = null): File

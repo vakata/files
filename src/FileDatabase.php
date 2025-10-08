@@ -10,9 +10,9 @@ use vakata\database\DBInterface;
  */
 class FileDatabase extends FileDatabaseStorage
 {
-    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads', $linkCallback = null)
+    public function __construct($baseDirectory, DBInterface $db, $table = 'uploads')
     {
-        parent::__construct($baseDirectory, $db, $table, false, null, $baseDirectory, $linkCallback);
+        parent::__construct($baseDirectory, $db, $table, false, null, $baseDirectory);
     }
 
     protected function getLocation(string $name): string
@@ -110,16 +110,7 @@ class FileDatabase extends FileDatabaseStorage
                 }
                 @register_shutdown_function(function () use ($name) { @unlink($name); });
                 return $name;
-            },
-            call_user_func(
-                $this->linkCallback,
-                [
-                    'id' => $data['id'],
-                    'location' => null,
-                    'name' => $data['name'],
-                    'path' => null
-                ]
-            )
+            }
         );
     }
     public function set(File $file, $contents = null): File
