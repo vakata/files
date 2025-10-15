@@ -33,7 +33,7 @@ class FileStorage implements FileStorageInterface
         // }
         $uen = sha1($name);
         do {
-            $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
+            $newName = sprintf('%04d', $cnt++) . '.' . $uen; // . '_up';
         } while (file_exists($this->baseDirectory . $this->prefix . $newName));
 
         return $this->prefix . $newName;
