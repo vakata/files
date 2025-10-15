@@ -26,7 +26,8 @@ class FileDatabaseCloud extends FileDatabaseStorage
     protected function getLocation(string $name): string
     {
         $cnt = 0;
-        $uen = urlencode($name);
+        // $uen = urlencode($name);
+        $uen = sha1($name);
         do {
             $newName = sprintf('%04d', $cnt++) . '.' . $uen;
         } while ($this->db->one("SELECT 1 FROM {$this->table} WHERE location = ?", $this->prefix . $newName));

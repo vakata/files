@@ -27,10 +27,11 @@ class FileStorage implements FileStorageInterface
     protected function getLocation(string $name): string
     {
         $cnt = 0;
-        $uen = urlencode($name);
-        if (strlen($uen) > 230) { // keep total length under 255
-            $uen = preg_replace(['(%[a-f0-9]*$)i', '(%D0$)i'], '', substr($uen, 0, 230));
-        }
+        // $uen = urlencode($name);
+        // if (strlen($uen) > 230) { // keep total length under 255
+        //     $uen = preg_replace(['(%[a-f0-9]*$)i', '(%D0$)i'], '', substr($uen, 0, 230));
+        // }
+        $uen = sha1($name);
         do {
             $newName = sprintf('%04d', $cnt++) . '.' . $uen . '_up';
         } while (file_exists($this->baseDirectory . $this->prefix . $newName));
