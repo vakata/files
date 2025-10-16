@@ -118,6 +118,10 @@ class File
         }
     }
 
+    public function isLocal(): bool
+    {
+        return isset($this->location) && is_string($this->location);
+    }
     public function path(): ?string
     {
         if (is_callable($this->location)) {
