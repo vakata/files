@@ -10,7 +10,10 @@ interface FileStorageInterface
     public function fromString(string $content, string $name): File;
     public function fromFile(string $path, ?string $name = null): File;
     public function fromPSRRequest(ServerRequestInterface $request, string $key = 'file', ?string $state = null): File;
-    
+
     public function get(string $id): File;
     public function set(File $file, $contents = null): File;
+
+    public function getVersion(string $id, string $version): File;
+    public function setVersion(string $id, string $version, string $contents): File;
 }

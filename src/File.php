@@ -12,6 +12,7 @@ class File
     protected $settings;
     protected $complete;
     protected $location;
+    protected $parent;
 
     public function __construct(
         string $id,
@@ -21,7 +22,8 @@ class File
         int $size,
         ?array $settings = null,
         bool $complete = true,
-        $location = null
+        $location = null,
+        $parent = null
     ) {
         $this->id = $id;
         $this->name = $name;
@@ -31,6 +33,7 @@ class File
         $this->settings = $settings ?? [];
         $this->complete = $complete;
         $this->location = $location;
+        $this->parent = $parent;
     }
 
     public function id(): string
@@ -65,6 +68,14 @@ class File
     {
         return $this->complete;
     }
+    public function parent(): mixed
+    {
+        return $this->parent;
+    }
+    public function isVersion(): bool
+    {
+        return $this->parent !== null;
+    }
 
     public function setName(string $name): self
     {
@@ -97,10 +108,15 @@ class File
         $this->hash = $hash;
         return $this;
     }
+    public function setParent(mixed $parent): self
+    {
+        $this->parent = $parent;
+        return $this;
+    }
 
     public function __get($k)
     {
-        if (in_array($k, [ 'id', 'name', 'hash', 'uploaded', 'size', 'settings' ])) {
+        if (in_array($k, [ 'id', 'name', 'hash', 'uploaded', 'size', 'settings', 'parent' ])) {
             return $this->{$k}();
         }
         return $this->setting($k);

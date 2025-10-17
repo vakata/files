@@ -126,4 +126,58 @@ class FileDatabaseStorage extends FileStorage
         );
         return $file;
     }
+    public function getVersion(string $id, string $version): File
+    {
+        $data = $this->db->one(
+            "SELECT id, name, location, hash, bytesize, uploaded, settings FROM {$this->table}_versions WHERE upload = ? AND version = ?",
+            [ $id, $version ]
+        );
+        if (!$data) {
+            throw new FileNotFoundException('File not found', 404);
+        }
+        if (!is_file($this->baseDirectory . $data['location'])) {
+            throw new FileNotFoundException('File not found 2', 404);
+        }
+        return new File(
+            $data['id'],
+            $data['name'],
+            $data['hash'],
+            strtotime($data['uploaded']),
+            $data['bytesize'],
+            json_decode($data['settings'] ?? '[]', true),
+            true,
+            $this->baseDirectory . $data['location'],
+            $id
+        );
+    }
+    public function setVersion(string $id, string $version, string $contents): File
+    {
+        $temp = $this->get($id);
+        file_put_contents($temp->path() . '.' . sha1($version), $contents);
+        $this->db->begin();
+        try {
+            $this->db->query(
+                "DELETE FROM {$this->table}_versions WHERE upload = ? AND version = ?",
+                [$temp->id(), $version]
+            );
+            $this->db->query(
+                "INSERT INTO {$this->table}_versions (upload, version, name, location, bytesize, uploaded, hash, settings)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    $temp->id(),
+                    $version,
+                    $temp->name(),
+                    str_replace($this->baseDirectory, '', $temp->path()) . '.' . sha1($version),
+                    strlen($contents),
+                    date('Y-m-d H:i:s', time()),
+                    md5_file($temp->path() . '.' . sha1($version)),
+                    json_encode($temp->settings(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                ]
+            );
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollback();
+        }
+        return $this->getVersion($id, $version);
+    }
 }

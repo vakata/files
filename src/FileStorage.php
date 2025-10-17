@@ -200,4 +200,15 @@ class FileStorage implements FileStorageInterface
         );
         return $file;
     }
+
+    public function getVersion(string $id, string $version): File
+    {
+        return $this->get($id . '.' . $version)->setParent($id);
+    }
+    public function setVersion(string $id, string $version, string $contents): File
+    {
+        $temp = $this->get($id);
+        file_put_contents($temp->path() . '.' . sha1($version), $contents);
+        return $this->getVersion($id, $version);
+    }
 }
