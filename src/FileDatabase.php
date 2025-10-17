@@ -119,6 +119,10 @@ class FileDatabase extends FileDatabaseStorage
     {
         parent::set($file, null);
         $temp = $this->get($file->id());
+        $this->db->query(
+            "DELETE FROM {$this->table}_versions WHERE upload = ?",
+            [$temp->id()]
+        );
         if ($contents !== null) {
             if ($this->db->driverName() === 'oracle') {
                 $this->db->begin();

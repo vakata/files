@@ -106,6 +106,10 @@ class FileDatabaseStorage extends FileStorage
     public function set(File $file, $contents = null): File
     {
         $temp = $this->get($file->id());
+        $this->db->query(
+            "DELETE FROM {$this->table}_versions WHERE upload = ?",
+            [$temp->id()]
+        );
         if ($contents !== null) {
             $handle = fopen($temp->path(), 'w');
             while (!feof($contents)) {
