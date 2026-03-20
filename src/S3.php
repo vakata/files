@@ -173,7 +173,7 @@ class S3 implements CloudInterface
                 }
                 $temp = explode(':', $v, 2);
                 if (count($temp) === 2) {
-                    $this->headers[trim($temp[0])] = trim($temp[1]);
+                    $this->headers[strtolower(trim($temp[0]))] = trim($temp[1]);
                 }
             }
         }
@@ -272,7 +272,7 @@ class S3 implements CloudInterface
             );
             $res[] =
                 '<Part>
-                    <ETag>'.trim($this->headers['ETag'], '"').'</ETag>
+                    <ETag>'.trim($this->headers['etag'], '"').'</ETag>
                     <PartNumber>'.$ptn.'</PartNumber>
                 </Part>';
         }

@@ -195,13 +195,13 @@ class GCS implements CloudInterface
                 }
                 $temp = explode(':', $v, 2);
                 if (count($temp) === 2) {
-                    $headers[trim($temp[0])] = trim($temp[1]);
+                    $headers[strtolower(trim($temp[0]))] = trim($temp[1]);
                 }
             }
             $res[] =
                 '<Part>
                     <PartNumber>'.$ptn.'</PartNumber>
-                    <ETag>'.trim($headers['ETag'], '"').'</ETag>
+                    <ETag>'.trim($headers['etag'], '"').'</ETag>
                 </Part>';
         }
         $res = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" .
